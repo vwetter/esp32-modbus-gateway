@@ -1,0 +1,69 @@
+# Home Assistant configuration for ESP32 Modbus Gateway
+
+sensor:
+  # Read temperature from Modbus device
+  - platform: rest
+    name: "Modbus Temperature"
+    resource: "http://10.0.0.46/api/modbus/read"
+    method: POST
+    payload: '{"slave_id":1,"address":0,"quantity":1}'
+    json_attributes_path: "$.values"
+    json_attributes:
+      - "0"
+    value_template: "{{ value_json.values[0] | float / 10 }}"
+    unit_of_measurement: "°C"
+    scan_interval: 30
+    
+  # Read humidity
+  - platform: rest
+    name: "Modbus Humidity"
+    resource: "http://10.0.0.46/api/modbus/read"
+    method: POST
+    payload: '{"slave_id":1,"address":1,"quantity":1}'
+    value_template: "{{ value_json.values[0] | float / 10 }}"
+    unit_of_measurement: "%"
+    scan_interval: 30
+    
+  # Gateway status
+  - platform: rest
+    name: "Gateway Status"
+    resource: "http://10.0.0.46/api/status"
+    json_attributes:
+      - uptime_s
+      - request_count
+      - error_count
+      - free_heap
+    value_template: "{{ 'Online' if value_json.wifi_connected else 'Offline' }}"
+    scan_interval: 60
+
+# Write to Modbus device
+rest_command:
+  modbus_write:
+    url: "http://10.0.0.46/api/modbus/write"
+    method: POST
+    headers:
+      content-type: "application/json"
+    payload: '{"slave_id":{{ slave_id }},"address":{{ address }},"value":{{ value }}}'
+
+# Automation example: Set setpoint
+automation:
+  - alias: "Set Temperature Setpoint"
+    trigger:
+      platform: state
+      entity_id: input_number.temperature_setpoint
+    action:
+      service: rest_command.modbus_write
+      data:
+        slave_id: 1
+        address: 100
+        value: "{{ states('input_number.temperature_setpoint') | int * 10 }}"
+
+# Input for setpoint
+input_number:
+  temperature_setpoint:
+    name: Temperature Setpoint
+    min: 10
+    max: 40
+    step: 0.5
+    unit_of_measurement: "°C"
+    icon: mdi:thermometer
