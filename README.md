@@ -219,6 +219,7 @@ Built with:
 - [AsyncTCP](https://github.com/me-no-dev/AsyncTCP) by me-no-dev
 - [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) by me-no-dev
 - [ArduinoJson](https://arduinojson.org/) by Benoit Blanchon
+- .... and obviously Github Copilot
 
 ## ⭐ Support
 
