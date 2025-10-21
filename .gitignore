@@ -1,0 +1,24 @@
+# Arduino builds
+build/
+*.bin
+*.elf
+*.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Don't commit credentials
+secrets.h
+wifi-config.h
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.pytest_cache/
+
+# Logs
+*.log
