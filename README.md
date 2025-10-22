@@ -1,7 +1,10 @@
 # ESP32 Modbus RTU ↔ TCP Gateway
 
-![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)
+![Modbus](https://img.shields.io/badge/Modbus-RTU%20%7C%20TCP-orange.svg)
+![Release](https://img.shields.io/github/v/release/vwetter/esp32-modbus-gateway)
 
 Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Includes web interface, REST API, and OTA updates.
 
