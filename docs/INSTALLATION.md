@@ -85,6 +85,42 @@ GPIO4  → DE & RE (tie together)
    [2s] [info] Web server started
    ```
 
+## Configuration Storage
+
+The gateway stores settings in ESP32's non-volatile storage (NVS):
+
+### What's Stored Persistently:
+- ✅ UART baud rate
+- ✅ Data bits (7/8)
+- ✅ Parity (N/E/O)
+- ✅ Stop bits (1/2)
+- ✅ Request/error counters (optional)
+
+### Storage Details:
+- **Location:** Dedicated NVS partition in flash
+- **Capacity:** ~16KB available
+- **Endurance:** ~100,000 write cycles
+- **Survives:** Power loss, reboots, firmware updates
+
+### First Boot:
+On first boot, default values are used:
+- Baud: 9600
+- Format: 8N1
+
+### Changing Settings:
+1. Via Web UI (UART Config tab)
+2. Via API: `POST /api/uart/config`
+3. Settings save immediately
+4. Take effect without reboot
+
+### Factory Reset:
+Clears all saved settings:
+- Via Web UI: "Factory Reset" button
+- Via API: `POST /api/factory-reset`
+- Restores all defaults
+- Device restarts automatically
+
+
 ## Troubleshooting
 
 ### Upload Fails
