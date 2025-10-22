@@ -146,20 +146,31 @@ More examples in [`examples/`](examples/)
 All settings in the `.ino` file:
 
 ```cpp
-// WiFi
-const char* WIFI_SSID = "YourNetwork";
-const char* WIFI_PASS = "YourPassword";
+// WiFi Settings
+const char* WIFI_SSID    = "YOUR_SSID";
+const char* WIFI_PASS    = "YOUR_PASSWORD";
+const char* AP_SSID      = "ESP32-ModbusGW";
+const char* AP_PASS      = "12345678";
 
-// Pins
-#define MODBUS_TX_PIN     17    // ESP32 TX → MAX485 DI
-#define MODBUS_RX_PIN     16    // ESP32 RX → MAX485 RO
-#define MODBUS_DE_PIN     4     // Direction control
+// OTA Settings
+const char* OTA_HOSTNAME = "esp32-modbus-gw";
+const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 
-// Serial (can change via web UI)
+// Hardware Pins
+#define MODBUS_TX_PIN     17
+#define MODBUS_RX_PIN     16
+#define MODBUS_DE_PIN     4
+
+// Serial (used on first boot only)
 #define MODBUS_DEFAULT_BAUD     9600
 #define MODBUS_DEFAULT_DATABITS 8
 #define MODBUS_DEFAULT_PARITY   'N'  // N, E, or O
 #define MODBUS_DEFAULT_STOPBITS 1
+
+// Network Ports
+#define WEB_PORT        80
+#define MODBUS_TCP_PORT 502
+
 ```
 
 ## 🔧 Troubleshooting
@@ -184,6 +195,7 @@ const char* WIFI_PASS = "YourPassword";
 - ✅ Modbus TCP server (port 502)
 - ✅ Modbus RTU master (RS485)
 - ✅ Web interface (embedded, no SPIFFS needed)
+- ✅ **Persistent configuration** (settings saved to NVS flash)
 - ✅ REST API for automation
 - ✅ OTA firmware updates
 - ✅ Real-time logs
