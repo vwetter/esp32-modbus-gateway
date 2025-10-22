@@ -34,7 +34,7 @@
 - MAX485: "HiLetgo MAX485" or "DSD TECH RS485"
 - Total: ~$25 (1-2 day shipping)
 
-### Quality Option (Adafruit/SparkFun)
+### Quality Option (Adafruit / SparkFun / AZ Delivery)
 - ESP32: Adafruit HUZZAH32
 - RS485: SparkFun Transceiver Breakout
 - Total: ~$40 (premium quality)
