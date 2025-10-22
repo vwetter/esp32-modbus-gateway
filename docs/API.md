@@ -172,6 +172,11 @@ POST /api/uart/config
 POST /api/restart
 ```
 
+### 10. Factory Reset
+
+```http
+POST /api/factory-reset
+
 ## Code Examples
 
 ### cURL
