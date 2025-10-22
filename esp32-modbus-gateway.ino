@@ -1,12 +1,10 @@
 /*
   ESP32 Modbus RTU <-> Modbus TCP Gateway
-  With Embedded Web UI (no SPIFFS required!)
+  With Persistent Configuration Storage
   
-  Libraries required:
-  - AsyncTCP (me-no-dev)
-  - ESPAsyncWebServer (me-no-dev)
-  - ArduinoJson 6.x
-  - ArduinoOTA (builtin)
+  Version: 1.1.0
+  Date: 2025-01-22
+  Author: vwetter
 */
 
 #include <WiFi.h>
@@ -14,27 +12,38 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <Preferences.h>
 #include <deque>
 
 // ========================= CONFIGURATION =========================
-const char* WIFI_SSID    = "atlanta";
+
+// WiFi Settings
+const char* WIFI_SSID    = "YOUR_SSID";
 const char* WIFI_PASS    = "YOUR_PASSWORD";
 const char* AP_SSID      = "ESP32-ModbusGW";
 const char* AP_PASS      = "12345678";
 
+// OTA Settings
+const char* OTA_HOSTNAME = "esp32-modbus-gw";
+const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change this for production!
+
+// Hardware Pins
 #define MODBUS_UART       Serial2
 #define MODBUS_TX_PIN     17
 #define MODBUS_RX_PIN     16
 #define MODBUS_DE_PIN     4
 
+// UART Default Settings (used on first boot only)
 #define MODBUS_DEFAULT_BAUD     9600
 #define MODBUS_DEFAULT_STOPBITS 1
 #define MODBUS_DEFAULT_DATABITS 8
 #define MODBUS_DEFAULT_PARITY   'N'
 
+// Network Ports
 #define WEB_PORT        80
 #define MODBUS_TCP_PORT 502
 
+// Modbus Timing
 #define MODBUS_RTU_RX_TIMEOUT_MS 1000
 #define MODBUS_RTU_INTER_FRAME_DELAY_MS 10
 #define MAX_LOG_ENTRIES 500
@@ -49,6 +58,123 @@ const char* AP_PASS      = "12345678";
 #define MODBUS_FC_WRITE_SINGLE_REGISTER   0x06
 #define MODBUS_FC_WRITE_MULTIPLE_COILS    0x0F
 #define MODBUS_FC_WRITE_MULTIPLE_REGISTERS 0x10
+
+// ========================= GLOBALS =========================
+AsyncWebServer webServer(WEB_PORT);
+AsyncServer* modbusTcpServer = nullptr;
+
+Preferences preferences;
+
+struct UARTConfig {
+  uint32_t baud;
+  uint8_t stop_bits;
+  uint8_t data_bits;
+  char parity;
+} uartCfg;
+
+std::deque<String> logBuffer;
+unsigned long reqCount = 0;
+unsigned long errCount = 0;
+unsigned long tcpConnections = 0;
+unsigned long startMs = 0;
+
+SemaphoreHandle_t rtuMutex = NULL;
+
+// ========================= FORWARD DECLARATIONS =========================
+void addLog(const String &msg, const char* level = "info");
+
+// ========================= UTILITIES =========================
+static uint16_t crc16_modbus(const uint8_t* buf, size_t len) {
+  uint16_t crc = 0xFFFF;
+  for (size_t pos = 0; pos < len; pos++) {
+    crc ^= (uint16_t)buf[pos];
+    for (int i = 8; i != 0; i--) {
+      if ((crc & 0x0001) != 0) {
+        crc >>= 1;
+        crc ^= 0xA001;
+      } else
+        crc >>= 1;
+    }
+  }
+  return crc;
+}
+
+void addLog(const String &msg, const char* level) {
+  String entry = "[" + String((millis() - startMs) / 1000) + "s] [" + String(level) + "] " + msg;
+  Serial.println(entry);
+  logBuffer.push_back(entry);
+  if (logBuffer.size() > MAX_LOG_ENTRIES) logBuffer.pop_front();
+}
+
+void setDE(bool enable) {
+  if (MODBUS_DE_PIN >= 0) {
+    digitalWrite(MODBUS_DE_PIN, enable ? HIGH : LOW);
+  }
+}
+
+String bytesToHex(const uint8_t* data, size_t len) {
+  String result = "";
+  for (size_t i = 0; i < len; i++) {
+    if (data[i] < 0x10) result += "0";
+    result += String(data[i], HEX);
+    if (i < len - 1) result += " ";
+  }
+  result.toUpperCase();
+  return result;
+}
+
+// ========================= PERSISTENT STORAGE =========================
+
+void loadConfig() {
+  preferences.begin("modbus-gw", false);
+  
+  uartCfg.baud = preferences.getUInt("baud", MODBUS_DEFAULT_BAUD);
+  uartCfg.stop_bits = preferences.getUChar("stop_bits", MODBUS_DEFAULT_STOPBITS);
+  uartCfg.data_bits = preferences.getUChar("data_bits", MODBUS_DEFAULT_DATABITS);
+  uartCfg.parity = preferences.getChar("parity", MODBUS_DEFAULT_PARITY);
+  
+  reqCount = preferences.getULong("req_count", 0);
+  errCount = preferences.getULong("err_count", 0);
+  
+  preferences.end();
+  
+  addLog("Config loaded: " + String(uartCfg.baud) + " " + 
+         String(uartCfg.data_bits) + String(uartCfg.parity) + 
+         String(uartCfg.stop_bits), "info");
+}
+
+void saveUartConfig() {
+  preferences.begin("modbus-gw", false);
+  
+  preferences.putUInt("baud", uartCfg.baud);
+  preferences.putUChar("stop_bits", uartCfg.stop_bits);
+  preferences.putUChar("data_bits", uartCfg.data_bits);
+  preferences.putChar("parity", uartCfg.parity);
+  
+  preferences.end();
+  
+  addLog("Config saved to NVS", "success");
+}
+
+void saveStats() {
+  preferences.begin("modbus-gw", false);
+  preferences.putULong("req_count", reqCount);
+  preferences.putULong("err_count", errCount);
+  preferences.end();
+}
+
+void factoryReset() {
+  preferences.begin("modbus-gw", false);
+  preferences.clear();
+  preferences.end();
+  
+  addLog("Factory reset completed", "warning");
+  
+  uartCfg.baud = MODBUS_DEFAULT_BAUD;
+  uartCfg.stop_bits = MODBUS_DEFAULT_STOPBITS;
+  uartCfg.data_bits = MODBUS_DEFAULT_DATABITS;
+  uartCfg.parity = MODBUS_DEFAULT_PARITY;
+}
 
 // ========================= EMBEDDED HTML =========================
 const char HTML_PAGE[] PROGMEM = R"rawliteral(
@@ -139,6 +265,11 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
             margin-left: 8px;
         }
         .btn-secondary:hover { background: #5a6778; }
+        .btn-danger {
+            background: #e53e3e;
+            margin-left: 8px;
+        }
+        .btn-danger:hover { background: #c53030; }
         .logs {
             background: #1a202c;
             color: #e2e8f0;
@@ -200,6 +331,15 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
         }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .info-box {
+            background: #edf2f7;
+            border-left: 4px solid #4299e1;
+            padding: 12px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2d3748;
+        }
     </style>
 </head>
 <body>
@@ -277,6 +417,10 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
             <div id="uart-tab" class="tab-content">
                 <h2 style="margin-bottom: 16px;">UART Configuration</h2>
                 
+                <div class="info-box">
+                    💾 Settings are saved permanently and persist across reboots
+                </div>
+                
                 <div class="form-group">
                     <label>Baud Rate</label>
                     <select id="uart-baud">
@@ -316,8 +460,9 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
                     </select>
                 </div>
                 
-                <button onclick="updateUartConfig()">💾 Update UART Config</button>
+                <button onclick="updateUartConfig()">💾 Save & Apply Config</button>
                 <button onclick="restartDevice()" class="btn-secondary">🔄 Restart Device</button>
+                <button onclick="factoryReset()" class="btn-danger">⚠️ Factory Reset</button>
             </div>
 
             <div id="logs-tab" class="tab-content">
@@ -339,6 +484,7 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
             document.querySelector(`button[onclick="switchTab('${tab}')"]`).classList.add('active');
             document.getElementById(`${tab}-tab`).classList.add('active');
             if (tab === 'logs') loadLogs();
+            if (tab === 'uart') loadUartConfig();
         }
 
         async function updateStatus() {
@@ -366,6 +512,17 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
                         `${data.wifi_ssid} - ${data.wifi_ip} (${data.wifi_rssi} dBm)`;
                 }
             } catch (e) { console.error('Status error:', e); }
+        }
+
+        async function loadUartConfig() {
+            try {
+                const response = await fetch('/api/uart/config');
+                const data = await response.json();
+                document.getElementById('uart-baud').value = data.baud_rate;
+                document.getElementById('uart-databits').value = data.data_bits;
+                document.getElementById('uart-parity').value = data.parity;
+                document.getElementById('uart-stopbits').value = data.stop_bits;
+            } catch (e) { console.error('Config load error:', e); }
         }
 
         async function modbusRead() {
@@ -450,7 +607,7 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
                 
                 const data = await response.json();
                 if (data.success) {
-                    alert('✅ UART config updated!');
+                    alert('✅ UART config saved permanently!\nSettings will persist after reboot.');
                     updateStatus();
                 } else {
                     alert('❌ Failed to update config');
@@ -500,71 +657,22 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
             } catch (e) { }
         }
 
+        async function factoryReset() {
+            if (!confirm('⚠️ Factory Reset will erase all saved settings!\n\nAre you sure?')) return;
+            if (!confirm('This action cannot be undone. Continue?')) return;
+            try {
+                await fetch('/api/factory-reset', { method: 'POST' });
+                alert('✅ Factory reset complete!\nDevice will restart with default settings.');
+                setTimeout(() => window.location.reload(), 3000);
+            } catch (e) { }
+        }
+
         updateStatus();
         setInterval(updateStatus, 2000);
     </script>
 </body>
 </html>
 )rawliteral";
-
-// ========================= GLOBALS =========================
-AsyncWebServer webServer(WEB_PORT);
-AsyncServer* modbusTcpServer = nullptr;
-
-struct UARTConfig {
-  uint32_t baud;
-  uint8_t stop_bits;
-  uint8_t data_bits;
-  char parity;
-} uartCfg = { MODBUS_DEFAULT_BAUD, MODBUS_DEFAULT_STOPBITS, MODBUS_DEFAULT_DATABITS, MODBUS_DEFAULT_PARITY };
-
-std::deque<String> logBuffer;
-unsigned long reqCount = 0;
-unsigned long errCount = 0;
-unsigned long tcpConnections = 0;
-unsigned long startMs = 0;
-
-SemaphoreHandle_t rtuMutex = NULL;
-
-// ========================= UTILITIES =========================
-static uint16_t crc16_modbus(const uint8_t* buf, size_t len) {
-  uint16_t crc = 0xFFFF;
-  for (size_t pos = 0; pos < len; pos++) {
-    crc ^= (uint16_t)buf[pos];
-    for (int i = 8; i != 0; i--) {
-      if ((crc & 0x0001) != 0) {
-        crc >>= 1;
-        crc ^= 0xA001;
-      } else
-        crc >>= 1;
-    }
-  }
-  return crc;
-}
-
-void addLog(const String &msg, const char* level = "info") {
-  String entry = "[" + String((millis() - startMs) / 1000) + "s] [" + String(level) + "] " + msg;
-  Serial.println(entry);
-  logBuffer.push_back(entry);
-  if (logBuffer.size() > MAX_LOG_ENTRIES) logBuffer.pop_front();
-}
-
-void setDE(bool enable) {
-  if (MODBUS_DE_PIN >= 0) {
-    digitalWrite(MODBUS_DE_PIN, enable ? HIGH : LOW);
-  }
-}
-
-String bytesToHex(const uint8_t* data, size_t len) {
-  String result = "";
-  for (size_t i = 0; i < len; i++) {
-    if (data[i] < 0x10) result += "0";
-    result += String(data[i], HEX);
-    if (i < len - 1) result += " ";
-  }
-  result.toUpperCase();
-  return result;
-}
 
 // ========================= RTU TRANSACTIONS =========================
 bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &resp_len, uint32_t timeout_ms = MODBUS_RTU_RX_TIMEOUT_MS) {
@@ -916,6 +1024,8 @@ void handleUartConfigPost(AsyncWebServerRequest *request, uint8_t *data, size_t 
   const char* p = doc["parity"] | "N";
   uartCfg.parity = p[0];
   
+  saveUartConfig();
+  
   MODBUS_UART.end();
   uint32_t cfg = SERIAL_8N1;
   if (uartCfg.data_bits == 8) {
@@ -924,7 +1034,7 @@ void handleUartConfigPost(AsyncWebServerRequest *request, uint8_t *data, size_t 
     else if (uartCfg.parity == 'O') cfg = (uartCfg.stop_bits == 1) ? SERIAL_8O1 : SERIAL_8O2;
   }
   MODBUS_UART.begin(uartCfg.baud, cfg, MODBUS_RX_PIN, MODBUS_TX_PIN);
-  addLog("UART: " + String(uartCfg.baud), "info");
+  addLog("UART: " + String(uartCfg.baud) + " saved to NVS", "success");
   request->send(200, "application/json", "{\"success\":true}");
 }
 
@@ -992,7 +1102,6 @@ void handleModbusWritePost(AsyncWebServerRequest *request, uint8_t *data, size_t
 }
 
 void initWeb() {
-  // Serve embedded HTML
   webServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", HTML_PAGE);
   });
@@ -1031,7 +1140,15 @@ void initWeb() {
   webServer.on("/api/modbus/read", HTTP_POST, [](AsyncWebServerRequest *r){}, nullptr, handleModbusReadPost);
   webServer.on("/api/modbus/write", HTTP_POST, [](AsyncWebServerRequest *r){}, nullptr, handleModbusWritePost);
 
+  webServer.on("/api/factory-reset", HTTP_POST, [](AsyncWebServerRequest *request){
+    factoryReset();
+    request->send(200, "application/json", "{\"success\":true}");
+    delay(500);
+    ESP.restart();
+  });
+
   webServer.on("/api/restart", HTTP_POST, [](AsyncWebServerRequest *request){
+    saveStats();
     request->send(200, "application/json", "{\"success\":true}");
     delay(500);
     ESP.restart();
@@ -1042,18 +1159,45 @@ void initWeb() {
 }
 
 void initOTA() {
-  ArduinoOTA.setHostname("esp32-modbus-gw");
-  ArduinoOTA.setPassword("esphome123");
+  // Use configuration from top of file
+  ArduinoOTA.setHostname(OTA_HOSTNAME);
+  ArduinoOTA.setPassword(OTA_PASSWORD);
+  
   ArduinoOTA.onStart([]() {
+    saveStats();
     addLog("OTA start", "info");
     if (modbusTcpServer) modbusTcpServer->end();
   });
-  ArduinoOTA.onEnd([]() { addLog("OTA done", "info"); });
-  ArduinoOTA.onError([](ota_error_t error) {
-    addLog("OTA error: " + String(error), "error");
+  
+  ArduinoOTA.onEnd([]() { 
+    addLog("OTA done", "info"); 
   });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    // Optional: log progress every 10%
+    static unsigned int lastPercent = 0;
+    unsigned int percent = (progress * 100) / total;
+    if (percent >= lastPercent + 10) {
+      addLog("OTA progress: " + String(percent) + "%", "info");
+      lastPercent = percent;
+    }
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    String errorMsg = "OTA error: ";
+    switch (error) {
+      case OTA_AUTH_ERROR: errorMsg += "Auth Failed"; break;
+      case OTA_BEGIN_ERROR: errorMsg += "Begin Failed"; break;
+      case OTA_CONNECT_ERROR: errorMsg += "Connect Failed"; break;
+      case OTA_RECEIVE_ERROR: errorMsg += "Receive Failed"; break;
+      case OTA_END_ERROR: errorMsg += "End Failed"; break;
+      default: errorMsg += "Unknown (" + String(error) + ")"; break;
+    }
+    addLog(errorMsg, "error");
+  });
+  
   ArduinoOTA.begin();
-  addLog("OTA ready", "info");
+  addLog("OTA ready: " + String(OTA_HOSTNAME), "info");
 }
 
 void setup() {
@@ -1062,10 +1206,12 @@ void setup() {
   startMs = millis();
 
   Serial.println("\n========================================");
-  Serial.println("ESP32 Modbus Gateway");
+  Serial.println("ESP32 Modbus Gateway v1.1.0");
   Serial.println("========================================");
 
   rtuMutex = xSemaphoreCreateMutex();
+
+  loadConfig();
 
   if (MODBUS_DE_PIN >= 0) {
     pinMode(MODBUS_DE_PIN, OUTPUT);
@@ -1073,12 +1219,18 @@ void setup() {
     addLog("RS485 DE pin: GPIO" + String(MODBUS_DE_PIN), "info");
   }
 
-  MODBUS_UART.begin(uartCfg.baud, SERIAL_8N1, MODBUS_RX_PIN, MODBUS_TX_PIN);
+  uint32_t cfg = SERIAL_8N1;
+  if (uartCfg.data_bits == 8) {
+    if (uartCfg.parity == 'N') cfg = (uartCfg.stop_bits == 1) ? SERIAL_8N1 : SERIAL_8N2;
+    else if (uartCfg.parity == 'E') cfg = (uartCfg.stop_bits == 1) ? SERIAL_8E1 : SERIAL_8E2;
+    else if (uartCfg.parity == 'O') cfg = (uartCfg.stop_bits == 1) ? SERIAL_8O1 : SERIAL_8O2;
+  }
+  
+  MODBUS_UART.begin(uartCfg.baud, cfg, MODBUS_RX_PIN, MODBUS_TX_PIN);
   MODBUS_UART.setRxBufferSize(512);
-  addLog("UART: " + String(uartCfg.baud) + " baud, TX=" + String(MODBUS_TX_PIN) + " RX=" + String(MODBUS_RX_PIN), "info");
 
   WiFi.mode(WIFI_AP_STA);
-  WiFi.setHostname("esp32-modbus-gw");
+  WiFi.setHostname(OTA_HOSTNAME);  // Use OTA hostname for WiFi too
   WiFi.softAP(AP_SSID, AP_PASS);
   addLog("AP: " + String(AP_SSID) + " IP: " + WiFi.softAPIP().toString(), "info");
   
@@ -1106,8 +1258,9 @@ void setup() {
 
   initOTA();
 
-  addLog("Ready!", "success");
+  addLog("Ready! Config stored in NVS.", "success");
   Serial.println("\nWeb UI: http://" + WiFi.localIP().toString());
+  Serial.println("OTA: " + String(OTA_HOSTNAME) + ".local");
 }
 
 void loop() {
@@ -1117,7 +1270,11 @@ void loop() {
   if (millis() - lastCheck > 30000) {
     lastCheck = millis();
     if (WiFi.status() != WL_CONNECTED) WiFi.reconnect();
+    saveStats();
   }
+  
+  delay(10);
+}
   
   delay(10);
 }
