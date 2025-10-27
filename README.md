@@ -10,17 +10,18 @@ Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **W
 
 ![Dashboard](docs/images/dashboard.png)
 
-## 🚀 NEW: WiFi Manager (v1.2.0)
+## 🚀 NEW: Smart WiFi Manager (v1.2.0)
 
 **No more hardcoded WiFi credentials!** Flash once, configure everywhere:
 
 1. **Flash generic firmware** - no code changes needed
-2. **Auto AP-Mode** on first boot: `AP-modbus-gw` (password: `initpass`)
+2. **Smart AP-Mode**: `AP-modbus-gw` appears only when needed
 3. **Web-based WiFi setup** - scan and select networks
-4. **Persistent storage** - remembers settings after reboot
-5. **Easy reconfiguration** - reset WiFi anytime via web interface
+4. **Clean operation** - AP automatically disabled after WiFi connection
+5. **Intelligent fallback** - AP reappears if WiFi connection fails
+6. **Persistent storage** - remembers settings after reboot
 
-Perfect for **mass deployment** and **field installations**!
+Perfect for **mass deployment** and **field installations** with minimal WiFi pollution!
 
 ![Dashboard](docs/images/dashboard.png)
 
@@ -61,13 +62,14 @@ GPIO4   ───►   DE & RE
 
 ## ⚡ Quick Start
 
-### Method 1: WiFi Manager (Recommended) 🆕
+### Method 1: Smart WiFi Manager (Recommended) 🆕
 
 1. **Flash the firmware** (see steps 1-3 below for Arduino IDE setup)
 2. **Connect to AP**: Look for WiFi network `AP-modbus-gw` (password: `initpass`)
 3. **Open browser**: Go to `http://192.168.4.1`
 4. **Select your WiFi**: Choose network and enter password
-5. **Done!** Device reboots and connects to your WiFi
+5. **Clean operation**: AP automatically disappears after successful connection
+6. **Done!** Device operates only on your WiFi network
 
 ### Method 2: Traditional (Edit Code)
 
@@ -134,14 +136,15 @@ Open `http://[gateway-ip]` in your browser to:
 
 ![Web UI](docs/images/dashboard.png)
 
-### WiFi Setup Interface (First Boot / AP Mode)
-When device is unconfigured or in AP mode:
+### WiFi Setup Interface (First Boot / Reconfiguration)
+When device needs WiFi configuration:
+- **Automatic AP mode**: `AP-modbus-gw` appears automatically
 - **WiFi network scanning** with signal strength
 - **Point-and-click** network selection
 - **Secure password entry**
-- **Automatic reboot** after configuration
+- **Clean shutdown** - AP disappears after successful connection
 
-Perfect for **field installations** without laptops!
+Perfect for **field installations** without laptops and **clean production networks**!
 
 ## 📡 Using the API
 
@@ -239,9 +242,21 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 
 1. **Flash once**: Upload generic firmware to all devices
 2. **Deploy anywhere**: No pre-configuration needed
-3. **On-site setup**: Connect to AP, configure WiFi via browser
-4. **Automatic operation**: Device remembers settings forever
-5. **Easy reconfiguration**: Reset WiFi anytime via web interface
+3. **On-site setup**: Connect to `AP-modbus-gw`, configure WiFi via browser
+4. **Clean operation**: AP automatically disappears after WiFi connection
+5. **Automatic fallback**: AP reappears if WiFi connection fails
+6. **Easy reconfiguration**: Reset WiFi anytime via web interface
+
+### Smart AP Behavior
+
+The gateway uses intelligent AP management:
+
+| Situation | AP Status | WiFi Status | Behavior |
+|-----------|-----------|-------------|----------|
+| **First boot** | ✅ Active | ❌ Disconnected | Setup via `AP-modbus-gw` |
+| **WiFi configured** | ❌ **Auto-disabled** | ✅ Connected | Clean operation, no AP pollution |
+| **WiFi fails** | ✅ **Auto-enabled** | ❌ Disconnected | Fallback for reconfiguration |
+| **WiFi reset** | ✅ Active | ❌ Disconnected | Ready for new configuration |
 
 ### WiFi Reset Options
 
@@ -262,8 +277,9 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 | **Can't find WiFi setup** | Look for `AP-modbus-gw` network, password: `initpass` |
 | **WiFi setup page won't load** | Try `http://192.168.4.1` directly |
 | **Device won't connect to WiFi** | Check password, use 2.4GHz network only |
-| **Lost WiFi after router change** | Connect to AP mode, reconfigure WiFi |
+| **Lost WiFi after router change** | AP automatically appears for reconfiguration |
 | **Can't access after WiFi config** | Check router DHCP list for device IP |
+| **AP still visible after setup** | Normal - AP disappears after successful WiFi connection |
 | **Need to reconfigure WiFi** | Use "Reset WiFi Config" button in web interface |
 | **No Modbus response** | Verify wiring, check slave address and baud rate |
 | **"CRC error" in logs** | Add/check 120Ω termination resistors |
@@ -294,9 +310,10 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 
 ## ✨ Features
 
-- ✅ **WiFi Manager** - No hardcoded credentials, web-based setup
+- ✅ **Smart WiFi Manager** - Intelligent AP mode with auto-disable
 - ✅ **Generic Firmware** - Flash once, configure anywhere  
-- ✅ **Auto AP Mode** - Automatic setup mode for unconfigured devices
+- ✅ **Clean Operation** - AP automatically hidden after WiFi connection
+- ✅ **Auto Fallback** - AP reappears automatically when WiFi fails
 - ✅ **Persistent Config** - Settings saved to NVS flash memory
 - ✅ **WiFi Reset** - Easy reconfiguration via web interface
 - ✅ Modbus TCP server (port 502)
@@ -328,8 +345,10 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 ### Deployment Advantages
 - **Mass deployment** - Flash identical firmware to hundreds of devices
 - **Field installation** - No laptop needed for WiFi configuration
+- **Clean networks** - No permanent AP pollution in production
 - **Maintenance-friendly** - Easy WiFi reconfiguration via web interface
 - **Cost-effective** - ~$15 hardware cost per gateway
+- **Robust operation** - Automatic fallback and recovery mechanisms
 
 ## 🏠 Integrations
 
