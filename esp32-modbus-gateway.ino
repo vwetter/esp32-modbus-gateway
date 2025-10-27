@@ -18,10 +18,13 @@
 // ========================= CONFIGURATION =========================
 
 // WiFi Settings
-const char* WIFI_SSID    = "YOUR_SSID";
-const char* WIFI_PASS    = "YOUR_PASSWORD";
-const char* AP_SSID      = "ESP32-ModbusGW";
-const char* AP_PASS      = "12345678";
+const char* AP_SSID      = "AP-modbus-gw";
+const char* AP_PASS      = "initpass";
+
+// WiFi Credentials (loaded from NVS)
+String wifi_ssid = "";
+String wifi_password = "";
+bool wifi_configured = false;
 
 // OTA Settings
 const char* OTA_HOSTNAME = "esp32-modbus-gw";
@@ -136,11 +139,22 @@ void loadConfig() {
   reqCount = preferences.getULong("req_count", 0);
   errCount = preferences.getULong("err_count", 0);
   
+  // Load WiFi configuration
+  wifi_ssid = preferences.getString("wifi_ssid", "");
+  wifi_password = preferences.getString("wifi_password", "");
+  wifi_configured = (wifi_ssid.length() > 0);
+  
   preferences.end();
   
   addLog("Config loaded: " + String(uartCfg.baud) + " " + 
          String(uartCfg.data_bits) + String(uartCfg.parity) + 
          String(uartCfg.stop_bits), "info");
+  
+  if (wifi_configured) {
+    addLog("WiFi config loaded: " + wifi_ssid, "info");
+  } else {
+    addLog("No WiFi config found - will start in AP mode", "info");
+  }
 }
 
 void saveUartConfig() {
@@ -154,6 +168,36 @@ void saveUartConfig() {
   preferences.end();
   
   addLog("Config saved to NVS", "success");
+}
+
+void saveWifiConfig(const String& ssid, const String& password) {
+  preferences.begin("modbus-gw", false);
+  
+  preferences.putString("wifi_ssid", ssid);
+  preferences.putString("wifi_password", password);
+  
+  preferences.end();
+  
+  wifi_ssid = ssid;
+  wifi_password = password;
+  wifi_configured = true;
+  
+  addLog("WiFi config saved: " + ssid, "success");
+}
+
+void clearWifiConfig() {
+  preferences.begin("modbus-gw", false);
+  
+  preferences.remove("wifi_ssid");
+  preferences.remove("wifi_password");
+  
+  preferences.end();
+  
+  wifi_ssid = "";
+  wifi_password = "";
+  wifi_configured = false;
+  
+  addLog("WiFi config cleared", "warning");
 }
 
 void saveStats() {
@@ -174,6 +218,11 @@ void factoryReset() {
   uartCfg.stop_bits = MODBUS_DEFAULT_STOPBITS;
   uartCfg.data_bits = MODBUS_DEFAULT_DATABITS;
   uartCfg.parity = MODBUS_DEFAULT_PARITY;
+  
+  // Clear WiFi configuration
+  wifi_ssid = "";
+  wifi_password = "";
+  wifi_configured = false;
 }
 
 // ========================= EMBEDDED HTML =========================
@@ -462,6 +511,7 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
                 
                 <button onclick="updateUartConfig()">💾 Save & Apply Config</button>
                 <button onclick="restartDevice()" class="btn-secondary">🔄 Restart Device</button>
+                <button onclick="resetWifiConfig()" class="btn-danger">📶 Reset WiFi Config</button>
                 <button onclick="factoryReset()" class="btn-danger">⚠️ Factory Reset</button>
             </div>
 
@@ -657,6 +707,15 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
             } catch (e) { }
         }
 
+        async function resetWifiConfig() {
+            if (!confirm('⚠️ Reset WiFi Configuration?\n\nThis will clear the saved WiFi settings and reboot the device in AP mode for reconfiguration.')) return;
+            try {
+                await fetch('/api/wifi/reset', { method: 'POST' });
+                alert('✅ WiFi configuration reset!\nDevice will reboot in AP mode.\nConnect to "AP-modbus-gw" network to reconfigure.');
+                setTimeout(() => window.location.reload(), 3000);
+            } catch (e) { }
+        }
+
         async function factoryReset() {
             if (!confirm('⚠️ Factory Reset will erase all saved settings!\n\nAre you sure?')) return;
             if (!confirm('This action cannot be undone. Continue?')) return;
@@ -669,6 +728,269 @@ const char HTML_PAGE[] PROGMEM = R"rawliteral(
 
         updateStatus();
         setInterval(updateStatus, 2000);
+    </script>
+</body>
+</html>
+)rawliteral";
+
+// ========================= SETUP HTML (for WiFi configuration) =========================
+const char SETUP_HTML_PAGE[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Modbus Gateway - WiFi Setup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .setup-container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #2d3748;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #718096;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .info-box {
+            background: #e6fffa;
+            border-left: 4px solid #38b2ac;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2d3748;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.2s;
+            margin-bottom: 12px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #718096;
+        }
+        .btn-secondary:hover {
+            background: #5a6778;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        .status.info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        .wifi-list {
+            background: #f7fafc;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+        .wifi-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .wifi-item:hover {
+            background: #edf2f7;
+        }
+        .wifi-item:last-child {
+            border-bottom: none;
+        }
+        .wifi-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .wifi-strength {
+            font-size: 12px;
+            color: #718096;
+        }
+        .loading {
+            text-align: center;
+            color: #718096;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <h1>🔌 ESP32 Modbus Gateway</h1>
+        <p class="subtitle">WiFi Configuration</p>
+        
+        <div class="info-box">
+            <strong>Welcome!</strong><br>
+            Configure your WiFi credentials to connect this gateway to your network. 
+            After saving, the device will reboot and connect to your WiFi.
+        </div>
+
+        <div class="form-group">
+            <label>Available WiFi Networks:</label>
+            <div id="wifi-list" class="wifi-list">
+                <div class="loading">Scanning for networks...</div>
+            </div>
+            <button onclick="scanWifi()" class="btn-secondary">🔄 Scan Again</button>
+        </div>
+
+        <form id="wifi-form">
+            <div class="form-group">
+                <label for="ssid">WiFi Network Name (SSID):</label>
+                <input type="text" id="ssid" name="ssid" required placeholder="Enter your WiFi network name">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">WiFi Password:</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your WiFi password">
+            </div>
+            
+            <button type="submit" id="submit-btn">💾 Save & Connect</button>
+        </form>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function scanWifi() {
+            const wifiList = document.getElementById('wifi-list');
+            wifiList.innerHTML = '<div class="loading">Scanning...</div>';
+            
+            try {
+                const response = await fetch('/api/wifi/scan');
+                const data = await response.json();
+                
+                if (data.networks && data.networks.length > 0) {
+                    wifiList.innerHTML = data.networks.map(network => `
+                        <div class="wifi-item" onclick="selectWifi('${network.ssid}')">
+                            <span class="wifi-name">${network.ssid}</span>
+                            <span class="wifi-strength">${network.rssi} dBm ${network.encryption ? '🔒' : '🔓'}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    wifiList.innerHTML = '<div class="loading">No networks found</div>';
+                }
+            } catch (error) {
+                wifiList.innerHTML = '<div class="loading">Scan failed</div>';
+            }
+        }
+
+        function selectWifi(ssid) {
+            document.getElementById('ssid').value = ssid;
+        }
+
+        document.getElementById('wifi-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const ssid = document.getElementById('ssid').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('status');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            if (!ssid || !password) {
+                statusDiv.innerHTML = '<div class="status error">Please enter both SSID and password</div>';
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Saving...';
+            statusDiv.innerHTML = '<div class="status info">Saving WiFi configuration...</div>';
+            
+            try {
+                const response = await fetch('/api/wifi/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid: ssid, password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = '<div class="status success">✅ WiFi configuration saved!<br>Device will reboot in 3 seconds...</div>';
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '<div class="status info">🔄 Rebooting... Please wait 30 seconds then connect to your WiFi network and visit the gateway IP.</div>';
+                    }, 3000);
+                } else {
+                    statusDiv.innerHTML = '<div class="status error">❌ Failed to save configuration</div>';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '💾 Save & Connect';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status error">❌ Error: ' + error.message + '</div>';
+                submitBtn.disabled = false;
+                submitBtn.textContent = '💾 Save & Connect';
+            }
+        });
+
+        // Auto-scan on page load
+        scanWifi();
     </script>
 </body>
 </html>
@@ -991,7 +1313,8 @@ String getStatusJson() {
   StaticJsonDocument<1024> doc;
   doc["uptime_s"] = (millis() - startMs) / 1000;
   doc["wifi_connected"] = (WiFi.status() == WL_CONNECTED);
-  doc["wifi_ssid"] = WiFi.SSID();
+  doc["wifi_configured"] = wifi_configured;
+  doc["wifi_ssid"] = wifi_configured ? wifi_ssid : WiFi.SSID();
   doc["wifi_ip"] = WiFi.localIP().toString();
   doc["wifi_rssi"] = WiFi.RSSI();
   doc["ap_ip"] = WiFi.softAPIP().toString();
@@ -1102,12 +1425,66 @@ void handleModbusWritePost(AsyncWebServerRequest *request, uint8_t *data, size_t
 }
 
 void initWeb() {
+  // Serve different pages based on WiFi configuration state
   webServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", HTML_PAGE);
+    if (wifi_configured) {
+      request->send_P(200, "text/html", HTML_PAGE);
+    } else {
+      request->send_P(200, "text/html", SETUP_HTML_PAGE);
+    }
   });
 
   webServer.on("/api/status", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "application/json", getStatusJson());
+  });
+
+  // WiFi Management APIs
+  webServer.on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest *request){
+    int n = WiFi.scanNetworks();
+    DynamicJsonDocument doc(4096);
+    JsonArray networks = doc.createNestedArray("networks");
+    
+    for (int i = 0; i < n; i++) {
+      JsonObject network = networks.createNestedObject();
+      network["ssid"] = WiFi.SSID(i);
+      network["rssi"] = WiFi.RSSI(i);
+      network["encryption"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+    }
+    
+    String output;
+    serializeJson(doc, output);
+    request->send(200, "application/json", output);
+  });
+
+  webServer.on("/api/wifi/config", HTTP_POST, [](AsyncWebServerRequest *request){}, nullptr, 
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      StaticJsonDocument<512> doc;
+      if (deserializeJson(doc, data, len)) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"Invalid JSON\"}");
+        return;
+      }
+      
+      String ssid = doc["ssid"] | "";
+      String password = doc["password"] | "";
+      
+      if (ssid.length() == 0) {
+        request->send(400, "application/json", "{\"success\":false,\"error\":\"SSID required\"}");
+        return;
+      }
+      
+      saveWifiConfig(ssid, password);
+      request->send(200, "application/json", "{\"success\":true}");
+      
+      // Reboot after 3 seconds
+      delay(3000);
+      ESP.restart();
+    });
+
+  webServer.on("/api/wifi/reset", HTTP_POST, [](AsyncWebServerRequest *request){
+    clearWifiConfig();
+    request->send(200, "application/json", "{\"success\":true}");
+    delay(1000);
+    ESP.restart();
   });
 
   webServer.on("/api/logs", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -1231,22 +1608,32 @@ void setup() {
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.setHostname(OTA_HOSTNAME);  // Use OTA hostname for WiFi too
+  
+  // Always start AP mode for fallback
   WiFi.softAP(AP_SSID, AP_PASS);
   addLog("AP: " + String(AP_SSID) + " IP: " + WiFi.softAPIP().toString(), "info");
   
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("WiFi");
-  int tries = 0;
-  while (WiFi.status() != WL_CONNECTED && tries++ < 30) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println();
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    addLog("WiFi: " + WiFi.SSID() + " IP: " + WiFi.localIP().toString(), "success");
+  // Try to connect to configured WiFi if available
+  if (wifi_configured) {
+    addLog("Attempting WiFi connection to: " + wifi_ssid, "info");
+    WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+    
+    Serial.print("WiFi");
+    int tries = 0;
+    while (WiFi.status() != WL_CONNECTED && tries++ < 30) {
+      delay(500);
+      Serial.print(".");
+    }
+    Serial.println();
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      addLog("WiFi: " + WiFi.SSID() + " IP: " + WiFi.localIP().toString(), "success");
+    } else {
+      addLog("WiFi connection failed - staying in AP mode", "warning");
+    }
   } else {
-    addLog("WiFi failed", "warning");
+    addLog("No WiFi configured - running in AP mode only", "info");
+    addLog("Connect to '" + String(AP_SSID) + "' to configure WiFi", "info");
   }
 
   initWeb();
@@ -1259,7 +1646,13 @@ void setup() {
   initOTA();
 
   addLog("Ready! Config stored in NVS.", "success");
-  Serial.println("\nWeb UI: http://" + WiFi.localIP().toString());
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nWeb UI: http://" + WiFi.localIP().toString());
+  } else {
+    Serial.println("\nSetup UI: http://" + WiFi.softAPIP().toString());
+    Serial.println("Connect to WiFi: " + String(AP_SSID) + " (password: " + String(AP_PASS) + ")");
+  }
   Serial.println("OTA: " + String(OTA_HOSTNAME) + ".local");
 }
 
