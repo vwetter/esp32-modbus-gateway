@@ -1,13 +1,38 @@
 
-### 5️⃣ **CHANGELOG.md** (Create if doesn't exist)
-
-```markdown name=CHANGELOG.md
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.0] - 2025-01-27
+
+### Added
+- **🚀 WiFi Manager functionality** - Major feature for generic deployments
+- Auto Access Point mode on first boot (`AP-modbus-gw`, password: `initpass`)
+- Web-based WiFi configuration interface with network scanning
+- WiFi credentials stored in NVS (Non-Volatile Storage)
+- WiFi reset functionality via web interface
+- Automatic fallback to AP mode when WiFi connection fails
+- Mobile-friendly setup interface with responsive design
+- WiFi network scanning with RSSI and encryption status
+- Generic firmware deployment (no code changes needed for different networks)
+- Enhanced status API with WiFi configuration information
+
+### Changed
+- **BREAKING**: Removed hardcoded WiFi credentials (`WIFI_SSID`, `WIFI_PASS`)
+- Access Point SSID changed to `AP-modbus-gw` (was `ESP32-ModbusGW`)
+- Access Point password changed to `initpass` (was `12345678`)
+- Boot sequence now checks for saved WiFi configuration
+- Web interface serves different pages based on configuration state
+- Factory reset now also clears WiFi configuration
+- Enhanced troubleshooting documentation
+
+### Fixed
+- Improved WiFi connection reliability with timeout handling
+- Better error handling for WiFi setup process
+- Enhanced logging for WiFi connection states
 
 ## [1.1.0] - 2025-01-22
 
@@ -46,5 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CRC validation
 - Multiple simultaneous TCP connections
 
+[1.2.0]: https://github.com/vwetter/esp32-modbus-gateway/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/vwetter/esp32-modbus-gateway/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/vwetter/esp32-modbus-gateway/releases/tag/v1.0.0

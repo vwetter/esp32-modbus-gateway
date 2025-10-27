@@ -1,12 +1,26 @@
 # ESP32 Modbus RTU ↔ TCP Gateway
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)
 ![Modbus](https://img.shields.io/badge/Modbus-RTU%20%7C%20TCP-orange.svg)
 ![Release](https://img.shields.io/github/v/release/vwetter/esp32-modbus-gateway)
 
-Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Includes web interface, REST API, and OTA updates.
+Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **WiFi Manager** for easy deployment, web interface, REST API, and OTA updates.
+
+![Dashboard](docs/images/dashboard.png)
+
+## 🚀 NEW: WiFi Manager (v1.2.0)
+
+**No more hardcoded WiFi credentials!** Flash once, configure everywhere:
+
+1. **Flash generic firmware** - no code changes needed
+2. **Auto AP-Mode** on first boot: `AP-modbus-gw` (password: `initpass`)
+3. **Web-based WiFi setup** - scan and select networks
+4. **Persistent storage** - remembers settings after reboot
+5. **Easy reconfiguration** - reset WiFi anytime via web interface
+
+Perfect for **mass deployment** and **field installations**!
 
 ![Dashboard](docs/images/dashboard.png)
 
@@ -47,6 +61,18 @@ GPIO4   ───►   DE & RE
 
 ## ⚡ Quick Start
 
+### Method 1: WiFi Manager (Recommended) 🆕
+
+1. **Flash the firmware** (see steps 1-3 below for Arduino IDE setup)
+2. **Connect to AP**: Look for WiFi network `AP-modbus-gw` (password: `initpass`)
+3. **Open browser**: Go to `http://192.168.4.1`
+4. **Select your WiFi**: Choose network and enter password
+5. **Done!** Device reboots and connects to your WiFi
+
+### Method 2: Traditional (Edit Code)
+
+For advanced users who prefer editing the source code directly.
+
 ### 1. Install Arduino IDE
 
 Download from [arduino.cc](https://www.arduino.cc/en/software)
@@ -68,35 +94,54 @@ Open **Tools → Manage Libraries**, install:
 - **ESPAsyncWebServer** by me-no-dev  
 - **ArduinoJson** (version 6.x) by Benoit Blanchon
 
-### 4. Configure & Upload
+### 4. Upload Firmware
 
 1. Open `esp32-modbus-gateway.ino`
-2. Edit WiFi credentials (lines 23-24):
+2. Select Board: **Tools → Board → ESP32 Dev Module**
+3. Select Port: **Tools → Port → (your COM port)**
+4. Click **Upload** ⬆️
+
+### 5. Configure WiFi
+
+**Option A: WiFi Manager (Easy)**
+1. Connect to `AP-modbus-gw` WiFi (password: `initpass`)
+2. Browser opens automatically to `http://192.168.4.1`
+3. Select your WiFi network and enter password
+4. Save & reboot
+
+**Option B: Traditional (Expert)**
+1. Edit lines 23-24 in code before uploading:
    ```cpp
    const char* WIFI_SSID = "YourWiFiName";
    const char* WIFI_PASS = "YourPassword";
    ```
-3. Select Board: **Tools → Board → ESP32 Dev Module**
-4. Select Port: **Tools → Port → (your COM port)**
-5. Click **Upload** ⬆️
 
-### 5. Find Your Gateway
+### 6. Find Your Gateway
 
-Open Serial Monitor (115200 baud). After boot, you'll see:
-```
-Connected to WiFi: YourNetwork IP: 10.0.0.46
-Web interface at: http://10.0.0.46
-```
+**WiFi Manager**: Check your router's DHCP list or use network scanner
+
+**Traditional**: Open Serial Monitor (115200 baud) to see IP address
 
 ## 🌐 Web Interface
 
+### Main Dashboard (Normal Operation)
 Open `http://[gateway-ip]` in your browser to:
 - View real-time statistics
 - Test Modbus read/write
 - Change UART settings (baud rate, parity, etc.)
 - View live logs
+- **Reset WiFi configuration** (return to AP mode)
 
 ![Web UI](docs/images/dashboard.png)
+
+### WiFi Setup Interface (First Boot / AP Mode)
+When device is unconfigured or in AP mode:
+- **WiFi network scanning** with signal strength
+- **Point-and-click** network selection
+- **Secure password entry**
+- **Automatic reboot** after configuration
+
+Perfect for **field installations** without laptops!
 
 ## 📡 Using the API
 
@@ -146,14 +191,27 @@ More examples in [`examples/`](examples/)
 
 ## ⚙️ Configuration
 
-All settings in the `.ino` file:
+### WiFi Manager Configuration (Recommended)
+
+No code editing needed! All done via web interface:
+
+1. **Access Point Settings** (when unconfigured):
+   - SSID: `AP-modbus-gw`  
+   - Password: `initpass`
+   - IP: `192.168.4.1`
+
+2. **Web Configuration**: Automatic WiFi scanning and setup
+3. **Persistent Storage**: Settings saved to ESP32 flash memory
+4. **Easy Reset**: "Reset WiFi Config" button in web interface
+
+### Traditional Configuration (Expert Mode)
+
+All settings in the `.ino` file (only needed if not using WiFi Manager):
 
 ```cpp
-// WiFi Settings
-const char* WIFI_SSID    = "YOUR_SSID";
-const char* WIFI_PASS    = "YOUR_PASSWORD";
-const char* AP_SSID      = "ESP32-ModbusGW";
-const char* AP_PASS      = "12345678";
+// WiFi Settings (legacy - now stored in NVS)
+const char* AP_SSID      = "AP-modbus-gw";
+const char* AP_PASS      = "initpass";
 
 // OTA Settings
 const char* OTA_HOSTNAME = "esp32-modbus-gw";
@@ -173,17 +231,58 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 // Network Ports
 #define WEB_PORT        80
 #define MODBUS_TCP_PORT 502
-
 ```
+
+## 🔄 WiFi Management
+
+### Deployment Workflow
+
+1. **Flash once**: Upload generic firmware to all devices
+2. **Deploy anywhere**: No pre-configuration needed
+3. **On-site setup**: Connect to AP, configure WiFi via browser
+4. **Automatic operation**: Device remembers settings forever
+5. **Easy reconfiguration**: Reset WiFi anytime via web interface
+
+### WiFi Reset Options
+
+- **Soft Reset**: Via web interface → "Reset WiFi Config" button
+- **Factory Reset**: Via web interface → "Factory Reset" button  
+- **Hard Reset**: Clear all NVS data, return to defaults
+
+### Fallback Mechanisms
+
+- **Connection Failed**: Automatically enables AP mode for reconfiguration
+- **Network Changed**: Reset WiFi config to connect to new network
+- **Password Changed**: Use WiFi reset to update credentials
 
 ## 🔧 Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| **Won't connect to WiFi** | Check SSID/password, use 2.4GHz network |
+| **Can't find WiFi setup** | Look for `AP-modbus-gw` network, password: `initpass` |
+| **WiFi setup page won't load** | Try `http://192.168.4.1` directly |
+| **Device won't connect to WiFi** | Check password, use 2.4GHz network only |
+| **Lost WiFi after router change** | Connect to AP mode, reconfigure WiFi |
+| **Can't access after WiFi config** | Check router DHCP list for device IP |
+| **Need to reconfigure WiFi** | Use "Reset WiFi Config" button in web interface |
 | **No Modbus response** | Verify wiring, check slave address and baud rate |
 | **"CRC error" in logs** | Add/check 120Ω termination resistors |
 | **Random crashes** | Check power supply (needs stable 5V 1A) |
+
+### WiFi Manager Troubleshooting
+
+1. **Can't see AP network**: 
+   - Wait 30 seconds after power-on
+   - Check if device already configured (look for existing connection)
+   - Factory reset if needed
+
+2. **AP mode not working**:
+   - Ensure device is unconfigured or reset
+   - Check 2.4GHz WiFi capability on your phone/laptop
+
+3. **Configuration not saving**:
+   - Ensure stable power supply during setup
+   - Wait for automatic reboot before disconnecting
 
 📖 [Detailed troubleshooting](docs/INSTALLATION.md#troubleshooting)
 
@@ -195,10 +294,14 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 
 ## ✨ Features
 
+- ✅ **WiFi Manager** - No hardcoded credentials, web-based setup
+- ✅ **Generic Firmware** - Flash once, configure anywhere  
+- ✅ **Auto AP Mode** - Automatic setup mode for unconfigured devices
+- ✅ **Persistent Config** - Settings saved to NVS flash memory
+- ✅ **WiFi Reset** - Easy reconfiguration via web interface
 - ✅ Modbus TCP server (port 502)
 - ✅ Modbus RTU master (RS485)
 - ✅ Web interface (embedded, no SPIFFS needed)
-- ✅ **Persistent configuration** (settings saved to NVS flash)
 - ✅ REST API for automation
 - ✅ OTA firmware updates
 - ✅ Real-time logs
@@ -208,9 +311,29 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change for production!
 - ✅ CRC validation
 - ✅ Function codes: 01, 02, 03, 04, 05, 06, 0F, 10
 
+## � Use Cases
+
+### Industrial Applications
+- **Factory automation** - Connect legacy PLCs to modern SCADA systems
+- **Remote monitoring** - Monitor industrial sensors over WiFi
+- **Equipment integration** - Bridge old RS485 devices to IoT platforms
+- **Energy management** - Connect power meters to monitoring systems
+
+### Smart Building/Home
+- **HVAC control** - Integrate building automation systems
+- **Energy monitoring** - Connect smart meters to home automation
+- **Lighting control** - Bridge Modbus lighting controllers
+- **Security systems** - Integrate access control devices
+
+### Deployment Advantages
+- **Mass deployment** - Flash identical firmware to hundreds of devices
+- **Field installation** - No laptop needed for WiFi configuration
+- **Maintenance-friendly** - Easy WiFi reconfiguration via web interface
+- **Cost-effective** - ~$15 hardware cost per gateway
+
 ## 🏠 Integrations
 
-Works with:
+Works seamlessly with:
 - **Home Assistant** - [Example config](examples/home-assistant/)
 - **Node-RED** - Direct HTTP nodes
 - **Grafana/InfluxDB** - Via Python scripts
@@ -244,4 +367,4 @@ If this helped you, please ⭐ star the repo!
 
 ---
 
-**Made by [@vwetter](https://github.com/vwetter)** • **2025-01-21**
+**Made by [@vwetter](https://github.com/vwetter)** • **2025-01-27** • **v1.2.0 with WiFi Manager**
