@@ -1609,10 +1609,6 @@ void setup() {
   WiFi.mode(WIFI_AP_STA);
   WiFi.setHostname(OTA_HOSTNAME);  // Use OTA hostname for WiFi too
   
-  // Always start AP mode for fallback
-  WiFi.softAP(AP_SSID, AP_PASS);
-  addLog("AP: " + String(AP_SSID) + " IP: " + WiFi.softAPIP().toString(), "info");
-  
   // Try to connect to configured WiFi if available
   if (wifi_configured) {
     addLog("Attempting WiFi connection to: " + wifi_ssid, "info");
@@ -1628,11 +1624,18 @@ void setup() {
     
     if (WiFi.status() == WL_CONNECTED) {
       addLog("WiFi: " + WiFi.SSID() + " IP: " + WiFi.localIP().toString(), "success");
+      // Disable AP mode after successful WiFi connection for cleaner operation
+      WiFi.softAPdisconnect(true);
+      addLog("AP mode disabled - connected to WiFi", "info");
     } else {
-      addLog("WiFi connection failed - staying in AP mode", "warning");
+      addLog("WiFi connection failed - enabling AP mode", "warning");
+      WiFi.softAP(AP_SSID, AP_PASS);
+      addLog("AP: " + String(AP_SSID) + " IP: " + WiFi.softAPIP().toString(), "info");
     }
   } else {
-    addLog("No WiFi configured - running in AP mode only", "info");
+    addLog("No WiFi configured - starting AP mode", "info");
+    WiFi.softAP(AP_SSID, AP_PASS);
+    addLog("AP: " + String(AP_SSID) + " IP: " + WiFi.softAPIP().toString(), "info");
     addLog("Connect to '" + String(AP_SSID) + "' to configure WiFi", "info");
   }
 
@@ -1665,9 +1668,6 @@ void loop() {
     if (WiFi.status() != WL_CONNECTED) WiFi.reconnect();
     saveStats();
   }
-  
-  delay(10);
-}
   
   delay(10);
 }
