@@ -34,7 +34,7 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change this for production!
 #define MODBUS_UART       Serial2
 #define MODBUS_TX_PIN     17
 #define MODBUS_RX_PIN     16
-#define MODBUS_DE_PIN     4
+#define MODBUS_DE_PIN     4  // -1 for standard RS485 Module, not MAX485
 
 // UART Default Settings (used on first boot only)
 #define MODBUS_DEFAULT_BAUD     9600
