@@ -2,7 +2,7 @@
   ESP32 Modbus RTU <-> Modbus TCP Gateway
   With Persistent Configuration Storage
   
-  Version: 1.1.0
+  Version: 1.1.1 - Fixed for evcc compatibility
   Date: 2025-01-22
   Author: vwetter
 */
@@ -47,8 +47,9 @@ const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change this for production!
 #define MODBUS_TCP_PORT 502
 
 // Modbus Timing
-#define MODBUS_RTU_RX_TIMEOUT_MS 1000
-#define MODBUS_RTU_INTER_FRAME_DELAY_MS 10
+#define MODBUS_RTU_RX_TIMEOUT_MS 2000              // Increased from 1000ms
+#define MODBUS_RTU_INTER_FRAME_DELAY_MS 50         // Increased from 10ms
+#define MODBUS_RTU_POST_TRANSACTION_DELAY_MS 75    // NEW: Delay after transaction
 #define MAX_LOG_ENTRIES 500
 #define MODBUS_RTU_MAX_FRAME 256
 
@@ -1020,10 +1021,16 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
   addLog("TX: " + bytesToHex(tx_frame, tx_total), "modbus");
 
   delay(MODBUS_RTU_INTER_FRAME_DELAY_MS);
-  while (MODBUS_UART.available()) MODBUS_UART.read();
+  
+  // IMPROVED: More thorough buffer clearing
+  unsigned long clearStart = millis();
+  while (MODBUS_UART.available() && (millis() - clearStart < 100)) {
+    MODBUS_UART.read();
+    delay(1);
+  }
 
   setDE(true);
-  delayMicroseconds(100);
+  delayMicroseconds(500);
 
   size_t written = MODBUS_UART.write(tx_frame, tx_total);
   MODBUS_UART.flush();
@@ -1035,8 +1042,11 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
     return false;
   }
 
-  delayMicroseconds(100);
+  delayMicroseconds(500);
   setDE(false);
+  
+  // NEW: Small delay before waiting for response
+  delayMicroseconds(200);
 
   unsigned long start = millis();
   resp_len = 0;
@@ -1059,6 +1069,8 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
           if (rcrc == rframecrc) {
             addLog("RX (Exception): " + bytesToHex(resp, resp_len), "modbus");
             if (rtuMutex != NULL) xSemaphoreGive(rtuMutex);
+            // NEW: Post-transaction delay - CRITICAL FOR EVCC!
+            delay(MODBUS_RTU_POST_TRANSACTION_DELAY_MS);
             return true;
           }
         }
@@ -1095,6 +1107,8 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
         if (rcrc == rframecrc) {
           addLog("RX: " + bytesToHex(resp, resp_len), "modbus");
           if (rtuMutex != NULL) xSemaphoreGive(rtuMutex);
+          // NEW: Post-transaction delay - CRITICAL FOR EVCC!
+          delay(MODBUS_RTU_POST_TRANSACTION_DELAY_MS);
           return true;
         } else if (resp_len < MODBUS_RTU_MAX_FRAME) {
           continue;
@@ -1110,7 +1124,7 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
   }
   
   if (resp_len > 0) {
-    addLog("Timeout (" + String(resp_len) + " bytes)", "error");
+    addLog("Timeout (" + String(resp_len) + " bytes): " + bytesToHex(resp, resp_len), "error");
   } else {
     addLog("No response", "error");
   }
@@ -1583,7 +1597,7 @@ void setup() {
   startMs = millis();
 
   Serial.println("\n========================================");
-  Serial.println("ESP32 Modbus Gateway v1.1.0");
+  Serial.println("ESP32 Modbus Gateway v1.1.1 (evcc-fix)");
   Serial.println("========================================");
 
   rtuMutex = xSemaphoreCreateMutex();
