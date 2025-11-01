@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-11-01
+
+### Added
+- **Error Counter Reset** - New "Reset Errors" button in Web UI statistics card
+- HTTP API endpoint `POST /api/errors/reset` to reset error counter (persists to NVS)
+- Improved Modbus timing for better evcc compatibility
+
+### Changed
+- Code cleanup - removed temporary debug outputs
+- Enhanced MAX485 timing:
+  - Increased DE/RE switch delays (before and after TX: 100µs → 500µs)
+  - Added critical 2ms delay after `setDE(false)` for RX mode switching
+  - More thorough UART buffer clearing before transmission
+  - Added 75ms post-transaction delay for rapid request stability
+- Increased Modbus RTU RX timeout from 1000ms to 2000ms
+- Increased inter-frame delay from 10ms to 50ms
+
+### Fixed
+- **"No response" errors with evcc** - resolved timing issues with rapid Modbus polling
+- MAX485 RX/TX mode switching race condition
+- Improved reliability for consecutive Modbus requests
+
+### Commits
+- 3cc2fae — Add HTTP POST handler for /api/errors/reset
+- a2772a1 — Update esp32-modbus-gateway.ino with UI improvements
+- e38d542 — Code cleanup and version bump
+
+
 ## [1.2.0] - 2025-01-27
 
 ### Added
