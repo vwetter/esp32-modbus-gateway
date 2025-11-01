@@ -2,8 +2,8 @@
   ESP32 Modbus RTU <-> Modbus TCP Gateway
   With Persistent Configuration Storage
   
-  Version: 1.1.1 - Fixed for evcc compatibility
-  Date: 2025-01-22
+  Version: 1.2.1 - WiFi Manager + evcc compatibility improvements
+  Date: 2025-11-01
   Author: vwetter
 */
 
