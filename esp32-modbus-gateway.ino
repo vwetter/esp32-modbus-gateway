@@ -1044,9 +1044,7 @@ bool rtu_transaction(const uint8_t* req, size_t req_len, uint8_t* resp, size_t &
 
   delayMicroseconds(500);
   setDE(false);
-  
-  // NEW: Small delay before waiting for response
-  delayMicroseconds(200);
+  delay(2);  // CRITICAL: Give MAX485 time to switch to RX mode!
 
   unsigned long start = millis();
   resp_len = 0;
