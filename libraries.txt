@@ -1,0 +1,33 @@
+ESP32 Modbus Gateway - Required Arduino Libraries
+========================================================
+
+To compile this project in Arduino IDE, you need to install the following libraries:
+
+Library Manager (Tools > Manage Libraries...):
+1. "ESP Async WebServer" by lacamera
+2. "ArduinoJson" by Benoit Blanchon (version 6.x)
+3. "AsyncTCP" by dvarrel
+
+Additional ESP32 Board Support:
+- ESP32 by Espressif Systems (via Boards Manager)
+
+Library Installation:
+1. Open Arduino IDE
+2. Go to Tools > Manage Libraries...
+3. Search for each library name and install
+4. Go to Tools > Board > Boards Manager...
+5. Search for "ESP32" and install "ESP32 by Espressif Systems"
+
+Board Settings for Arduino IDE:
+- Board: "ESP32 Dev Module" or similar ESP32 board
+- Upload Speed: 921600
+- CPU Frequency: 240MHz (WiFi/BT)
+- Flash Frequency: 80MHz
+- Flash Mode: QIO
+- Flash Size: 4MB (32Mb)
+- Partition Scheme: "Default 4MB with spiffs"
+- Core Debug Level: "None"
+- PSRAM: "Disabled"
+
+Note: This project was converted from PlatformIO to pure Arduino IDE to avoid 
+compilation conflicts and ensure consistency.

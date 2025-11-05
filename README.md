@@ -79,6 +79,8 @@ For advanced users who prefer editing the source code directly.
 
 Download from [arduino.cc](https://www.arduino.cc/en/software)
 
+📋 **Detailed setup instructions in [`ARDUINO_SETUP.md`](ARDUINO_SETUP.md)**
+
 ### 2. Add ESP32 Support
 
 - Go to **File → Preferences**
@@ -92,9 +94,11 @@ Download from [arduino.cc](https://www.arduino.cc/en/software)
 ### 3. Install Libraries
 
 Open **Tools → Manage Libraries**, install:
-- **AsyncTCP** by me-no-dev
-- **ESPAsyncWebServer** by me-no-dev  
+- **AsyncTCP** by dvarrel
+- **ESP Async WebServer** by lacamera
 - **ArduinoJson** (version 6.x) by Benoit Blanchon
+
+📋 **Complete library list in [`libraries.txt`](libraries.txt)**
 
 ### 4. Upload Firmware
 
