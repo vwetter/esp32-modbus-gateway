@@ -1,6 +1,6 @@
 # ESP32 Modbus RTU ↔ TCP Gateway
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)
 ![Modbus](https://img.shields.io/badge/Modbus-RTU%20%7C%20TCP-orange.svg)
@@ -10,10 +10,18 @@ Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **W
 
 ![Dashboard](docs/images/dashboard.png)
 
-## 🚀 NEW: Smart WiFi Manager (v1.2.0)
+## 🚀 NEW: Pure Arduino IDE Project (v1.2.3)
 
-**No more hardcoded WiFi credentials!** Flash once, configure everywhere:
+**Simplified development and deployment!** 
 
+### Arduino IDE Ready:
+1. **Pure Arduino IDE compatibility** - no more PlatformIO conflicts
+2. **Single .ino file** - eliminates "multiple definition" errors  
+3. **Easy setup** - detailed instructions in `ARDUINO_SETUP.md`
+4. **Library documentation** - complete list in `libraries.txt`
+5. **Streamlined structure** - clean project organization
+
+### Smart WiFi Manager (v1.2.0):
 1. **Flash generic firmware** - no code changes needed
 2. **Smart AP-Mode**: `AP-modbus-gw` appears only when needed
 3. **Web-based WiFi setup** - scan and select networks
@@ -21,7 +29,7 @@ Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **W
 5. **Intelligent fallback** - AP reappears if WiFi connection fails
 6. **Persistent storage** - remembers settings after reboot
 
-Perfect for **mass deployment** and **field installations** with minimal WiFi pollution!
+Perfect for **Arduino IDE users**, **mass deployment** and **field installations**!
 
 ![Dashboard](docs/images/dashboard.png)
 
@@ -390,4 +398,4 @@ If this helped you, please ⭐ star the repo!
 
 ---
 
-**Made by [@vwetter](https://github.com/vwetter)** • **2025-01-27** • **v1.2.0 with WiFi Manager**
+**Made by [@vwetter](https://github.com/vwetter)** • **2025-11-05** • **v1.2.3 Arduino IDE Pure Project**

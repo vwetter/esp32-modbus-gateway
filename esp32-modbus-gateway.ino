@@ -2,8 +2,8 @@
   ESP32 Modbus RTU <-> Modbus TCP Gateway
   With Persistent Configuration Storage
   
-  Version: 1.2.2 - Cleanup (remove debug prints & bump version)
-  Date: 2025-11-01
+  Version: 1.2.3 - Arduino IDE Pure Project
+  Date: 2025-11-05
   Author: vwetter
 */
 

@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2025-11-05
+
+### Changed
+- **Converted to pure Arduino IDE project** - Eliminates compilation conflicts
+- **Removed PlatformIO structure** - No more `src/`, `lib/`, `include/`, `platformio.ini`
+- **Single source of truth** - Only `esp32-modbus-gateway.ino` file remains
+- **Simplified deployment** - Direct Arduino IDE compatibility
+
+### Added
+- `ARDUINO_SETUP.md` - Detailed Arduino IDE setup instructions
+- `libraries.txt` - Complete list of required libraries with versions
+- Enhanced project documentation for Arduino IDE users
+
+### Fixed
+- **"Multiple definition" compilation errors** - Caused by duplicate code in .ino and src/main.cpp
+- Arduino IDE compatibility issues
+- Inconsistencies between PlatformIO and Arduino IDE builds
+
+### Removed
+- PlatformIO configuration files and directory structure
+- Duplicate code sources
+- Build system complexity
+
 ## [1.2.2] - 2025-11-01
 
 ### Added
