@@ -6,6 +6,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-11-06
+
+### Added
+- **Mobile-friendly button layout** - Read/Write buttons now side-by-side with flexbox
+- Shortened button labels ("Read Regs" / "Write Reg") for better mobile UX
+- Responsive button group styling with proper wrapping
+
+### Changed
+- **Write operations now use FC 0x10** (Write Multiple Registers) instead of FC 0x06
+- Improved compatibility with Deye inverters and similar devices that only accept FC 0x10
+- Button layout optimized for touch interfaces and small screens
+
+### Fixed
+- Button layout issues on mobile devices
+- Write timeout issues with slow Modbus devices (Deye inverters)
+- ESP32 crashes during write operations
+
+### Tested
+- Successfully verified with Deye solar inverter
+- All write operations working correctly with FC 0x10 (137ms response time)
+- Mobile UI tested on various screen sizes
+
+## [1.3.3] - 2025-11-06
+
+### Changed
+- Switched to FC 0x10 (Write Multiple Registers) for all write operations
+- Some devices only accept FC 0x10 even for single register writes
+
+### Fixed
+- Deye inverter compatibility - writes now working with FC 0x10
+
+## [1.3.2] - 2025-11-06
+
+### Added
+- `/api/errors/reset` endpoint for resetting error counter
+- **FreeRTOS task for async Modbus writes** - prevents blocking and crashes
+- JSON parse validation in all API endpoints
+- HTTP 202 Accepted response for async write operations
+
+### Fixed
+- **CRITICAL:** Removed static String variables in async callbacks (caused ESP32 crashes)
+- Memory corruption issues in Write operations
+- ESP32 connection reset errors during write operations (`net::ERR_CONNECTION_RESET`)
+
+### Changed
+- Write operations now execute in separate FreeRTOS task (non-blocking)
+- Improved error handling with proper JSON validation throughout
+
+## [1.3.1] - 2025-11-06
+
+### Added
+- Console.log debugging for Write operations in browser
+- Improved error handling in modbusWrite() JavaScript function
+
+### Fixed
+- Better error messages in browser console for debugging
+
+## [1.3.0] - 2025-11-06
+
+### Added
+- **Modbus Write support** with extended timeout for slow devices (Deye inverters)
+- Detailed write logging with timestamps and duration
+- WiFi setup page for initial configuration in AP mode
+- Serial log buffer for UI display
+- Serial Log tab with auto-refresh (2 seconds)
+- Firmware version display in UI header
+- Dynamic version loading from API
+
+### Changed
+- Extended RTU timeout from 1000ms to 2000ms for reads
+- Added 5000ms + 3000ms timeout for write operations (total 8s)
+- Memory optimizations for large operations
+
+### Fixed
+- Boot loop issues with yield() calls and delays
+- Memory overflow from stack arrays (switched to malloc/free)
+
 ## [1.2.3] - 2025-11-05
 
 ### Changed

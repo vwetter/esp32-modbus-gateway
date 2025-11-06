@@ -1,14 +1,29 @@
 # ESP32 Modbus RTU ↔ TCP Gateway
 
-![Version](https://img.shields.io/badge/version-1.2.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)
 ![Modbus](https://img.shields.io/badge/Modbus-RTU%20%7C%20TCP-orange.svg)
 ![Release](https://img.shields.io/github/v/release/vwetter/esp32-modbus-gateway)
 
-Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **WiFi Manager** for easy deployment, web interface, REST API, and OTA updates.
+Convert Modbus RTU (RS485) to Modbus TCP with a simple ESP32 board. Features **WiFi Manager** for easy deployment, **mobile-friendly** web interface, REST API, and OTA updates.
 
 ![Dashboard](docs/images/dashboard.png)
+
+## 🎉 NEW in v1.4.0: Mobile-Optimized UI & Enhanced Device Support
+
+### Mobile-First Design:
+- ✨ **Responsive button layout** - Read/Write buttons side-by-side on mobile
+- 📱 **Touch-friendly interface** - Optimized for smartphones and tablets
+- 🎯 **Compact controls** - Better use of screen space
+
+### Enhanced Modbus Compatibility:
+- 🔧 **FC 0x10 Write Support** - Compatible with Deye inverters and similar devices
+- ⚡ **Async Write Operations** - FreeRTOS tasks prevent ESP32 crashes
+- 🕐 **Extended Timeouts** - 5-8 second timeouts for slow devices
+- 📝 **Detailed Logging** - Full TX/RX packet inspection with timestamps
+
+**Tested and verified with Deye solar inverters!**
 
 ## 🚀 NEW: Pure Arduino IDE Project (v1.2.3)
 
@@ -323,6 +338,10 @@ The gateway uses intelligent AP management:
 ## ✨ Features
 
 - ✅ **Smart WiFi Manager** - Intelligent AP mode with auto-disable
+- ✅ **Mobile-Friendly UI** - Responsive design for smartphones and tablets
+- ✅ **FC 0x10 Write Support** - Compatible with Deye inverters and similar devices
+- ✅ **Async Operations** - FreeRTOS tasks prevent blocking and crashes
+- ✅ **Extended Timeouts** - Up to 8 seconds for slow devices
 - ✅ **Generic Firmware** - Flash once, configure anywhere  
 - ✅ **Clean Operation** - AP automatically hidden after WiFi connection
 - ✅ **Auto Fallback** - AP reappears automatically when WiFi fails
@@ -333,12 +352,12 @@ The gateway uses intelligent AP management:
 - ✅ Web interface (embedded, no SPIFFS needed)
 - ✅ REST API for automation
 - ✅ OTA firmware updates
-- ✅ Real-time logs
+- ✅ Real-time logs with packet inspection
 - ✅ Runtime UART configuration
 - ✅ Multiple simultaneous TCP connections
 - ✅ Automatic RS485 direction control
-- ✅ CRC validation
-- ✅ Function codes: 01, 02, 03, 04, 05, 06, 0F, 10
+- ✅ CRC validation with detailed error reporting
+- ✅ Function codes: 01, 02, 03, 04, 05, 06, 0F, **10** (Write Multiple Registers)
 
 ## � Use Cases
 
@@ -398,4 +417,4 @@ If this helped you, please ⭐ star the repo!
 
 ---
 
-**Made by [@vwetter](https://github.com/vwetter)** • **2025-11-05** • **v1.2.3 Arduino IDE Pure Project**
+**Made by [@vwetter](https://github.com/vwetter)** • **2025-11-06** • **v1.4.0 - Mobile-Optimized & Deye Compatible**
