@@ -2,9 +2,14 @@
   ESP32 Modbus RTU <-> Modbus TCP Gateway
   With Persistent Configuration Storage
   
-  Version: 1.4.0
-  Date: 2025-11-06
+  Version: 1.4.1
+  Date: 2026-03-10
   Author: vwetter
+  
+  Features v1.4.1:
+  - Enhanced WIRING.md documentation for standard RS485 modules
+  - Added code reference for MODBUS_DE_PIN configuration
+  - Documented simplified wiring for non-MAX485 RS485 modules
   
   Features v1.4.0:
   - Mobile-friendly button layout (Read/Write side-by-side)
@@ -33,7 +38,7 @@
   - Memory optimizations
 */
 
-#define FIRMWARE_VERSION "1.4.0"
+#define FIRMWARE_VERSION "1.4.1"
 
 #include <WiFi.h>
 #include <AsyncTCP.h>
@@ -56,7 +61,7 @@ bool wifi_configured = false;
 
 // OTA Settings
 const char* OTA_HOSTNAME = "esp32-modbus-gw";
-const char* OTA_PASSWORD = "esphome123";  // ⚠️ Change this for production!
+const char* OTA_PASSWORD = "initpass";  // ⚠️ Change this for production!
 
 // Hardware Pins
 #define MODBUS_UART       Serial2

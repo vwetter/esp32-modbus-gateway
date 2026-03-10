@@ -59,6 +59,52 @@
 
 ⚠️ **Critical:** DE and RE pins must be connected **together** to the same GPIO4
 
+### 3b. Standard RS485 Module (without DE/RE pins)
+
+If you're using a standard RS485 module (not MAX485), the wiring is **simplified**:
+
+```
+┌─────────────┐         ┌──────────────┐         ┌──────────────┐
+│    ESP32    │         │ Standard     │         │ Modbus Device│
+│             │         │ RS485        │         │   (Slave)    │
+│         3.3V├────────►│VCC           │         │              │
+│          GND├────────►│GND           │         │              │
+│      GPIO 17├────────►│DI   (TX in)  │         │              │
+│      GPIO 16│◄────────┤RO   (RX out) │         │              │
+│             │         │              │         │              │
+│             │         │A (+) ────────┼─────────┤A or Data+    │
+│             │         │B (-) ────────┼─────────┤B or Data-    │
+└─────────────┘         └──────────────┘         └──────────────┘
+                              │    │                    │    │
+                              │    │                   [120Ω]
+                             [120Ω]                 Termination
+                         Termination              (at last device)
+```
+
+**Connection table for standard RS485:**
+
+| ESP32 Pin | RS485 Pin | Direction | Description |
+|-----------|-----------|-----------|-------------|
+| **3.3V** | VCC | ESP32 → RS485 | Power supply |
+| **GND** | GND | ESP32 → RS485 | Common ground |
+| **GPIO17** | DI | ESP32 → RS485 | Transmit data |
+| **GPIO16** | RO | RS485 → ESP32 | Receive data |
+| *(unused)* | DE/RE | - | Not used with standard modules |
+
+⚠️ **Note:** Standard RS485 modules don't have DE/RE control pins. They automatically handle direction switching.
+
+**Code configuration:**
+
+In `esp32-modbus-gateway.ino`, set:
+```cpp
+#define MODBUS_DE_PIN     -1  // Standard RS485 Module (no DE/RE control)
+```
+
+Instead of:
+```cpp
+#define MODBUS_DE_PIN     4   // MAX485 Module with DE/RE control on GPIO4
+```
+
 ### 4. RS485 Bus Connections
 
 Connect all devices in **parallel** to the A and B lines:

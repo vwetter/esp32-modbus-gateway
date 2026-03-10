@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-03-10
+
+### Added
+- **Enhanced WIRING.md documentation** - New section for standard RS485 modules
+- **Standard RS485 module support documentation** - Simplified wiring guide for non-MAX485 modules
+- Code reference to `MODBUS_DE_PIN` configuration in documentation
+
+### Changed
+- Updated wiring documentation with clearer distinction between MAX485 and standard RS485 modules
+- Added simplified connection diagram for standard RS485 modules
+
+### Documentation
+- `docs/WIRING.md`: Added section "3b. Standard RS485 Module (without DE/RE pins)"
+- Clear examples for both module types with configuration code
+
 ## [1.4.0] - 2025-11-06
 
 ### Added
